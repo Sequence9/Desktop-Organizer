@@ -1,9 +1,29 @@
-# Desktop-Organizer
-Organizes your desktop into folders.
-This code is a desktop organizer tool written in Python using the Tkinter library. When run, it creates a GUI window with a label and a button.
+# Desktop Organizer
 
-The main function of the code is to organize the files on the current user's desktop into separate folders based on their file type (as determined by the file extension). The code first creates a dictionary of file extensions and their corresponding folder names, then iterates through all of the files on the desktop. For each file, it gets the file extension and checks if it is in the file_types dictionary. If it is, the code gets the corresponding folder name and creates a new folder with that name if it doesn't already exist. The code then moves the file into the appropriate folder and updates the label to show the current file being moved.
+A small Tkinter utility that groups files on your desktop into folders based on
+their extensions.
 
-Once all of the files have been processed, the label is updated to show that the organization is complete. The code also includes a "Undo" button that, when clicked, moves all of the files back to their original locations on the desktop and updates the label to show that the organization has been undone.
+## How it works
 
-So far I have not been able to get the undo function to work, so take caution if your current desktop icon setup is something you care about when running this code.
+Run the application and click **Organize** to begin. Recognized files are moved
+into category folders such as Documents, Images, Music, Videos, and Archives.
+Files with unknown extensions are left untouched.
+
+The operation is now opt-in: simply launching the app does not move anything.
+The **Undo** button restores files moved during the current session and removes
+category folders created by the app when they are empty.
+
+For safety, a file is skipped when a destination file with the same name already
+exists. If an original path becomes occupied before an undo, that file is also
+skipped instead of being overwritten.
+
+## Run
+
+Python 3 includes Tkinter on most Windows installations:
+
+```powershell
+python "Desktop Organizer/Desktop_Organizer.py"
+```
+
+The utility expects the desktop at `Desktop` inside the current user's home
+folder.
