@@ -1,24 +1,9 @@
-import os
 import shutil
-import getpass
 import tkinter as tk
+from pathlib import Path
 
-# Create the main window
-root = tk.Tk()
-root.title("Desktop Organizer")
-
-# Create a label to display the progress
-label = tk.Label(root, text="Organizing files...")
-label.pack()
-
-# Get the current user's username
-username = getpass.getuser()
-
-# Set the path to your desktop using the retrieved username
-desktop_path = f"C:\\Users\\{username}\\Desktop"
-
-# Create a list of file extensions and their corresponding folder names
-file_types = {
+# File extensions and their destination folders.
+FILE_TYPES = {
     ".exe": "Programs",
     ".docx": "Documents",
     ".jpg": "Images",
@@ -38,52 +23,106 @@ file_types = {
     ".flv": "FLV Videos",
     ".psd": "Photoshop Files",
     ".html": "HTML Files",
-    ".css": "CSS Files"
+    ".css": "CSS Files",
 }
 
-# Create a dictionary to store the created folders
-folders = {}
+desktop_path = Path.home() / "Desktop"
+moved_files = {}
+created_folders = set()
 
-# Create a dictionary to store the original file locations
-original_locations = {}
+root = tk.Tk()
+root.title("Desktop Organizer")
+
+label = tk.Label(root, text="Ready to organize your desktop.")
+label.pack(padx=20, pady=10)
+
+
+def organize():
+    if not desktop_path.is_dir():
+        label.config(text=f"Desktop folder not found: {desktop_path}")
+        return
+
+    organize_button.config(state=tk.DISABLED)
+    moved_count = 0
+    skipped_count = 0
+
+    for source in list(desktop_path.iterdir()):
+        if not source.is_file():
+            continue
+
+        folder_name = FILE_TYPES.get(source.suffix.lower())
+        if not folder_name:
+            continue
+
+        destination_folder = desktop_path / folder_name
+        destination = destination_folder / source.name
+
+        if destination.exists():
+            skipped_count += 1
+            continue
+
+        if not destination_folder.exists():
+            destination_folder.mkdir()
+            created_folders.add(destination_folder)
+
+        try:
+            shutil.move(str(source), str(destination))
+        except OSError:
+            skipped_count += 1
+            continue
+
+        moved_files[destination] = source
+        moved_count += 1
+        label.config(text=f"Moving {source.name} to {folder_name}")
+        root.update_idletasks()
+
+    undo_button.config(state=tk.NORMAL if moved_files else tk.DISABLED)
+    organize_button.config(state=tk.NORMAL)
+    label.config(
+        text=f"Organization complete: {moved_count} moved, {skipped_count} skipped."
+    )
+
 
 def undo():
-    # Iterate through the dictionary of original file locations
-    for filename, original_location in original_locations.items():
-        # Move the file back to its original location
-        shutil.move(os.path.join(desktop_path, filename), original_location)
-    # Update the label text to show that the organization has been undone
-    label.config(text="Desktop organization undone!")
+    restored_count = 0
+    skipped_count = 0
 
-# Iterate through all of the files on the desktop
-for filename in os.listdir(desktop_path):
-    # Get the file extension of the current file
-    extension = os.path.splitext(filename)[1]
-    # If the file extension is in the file_types list
-    if extension in file_types:
-        # Get the corresponding folder name
-        folder_name = file_types[extension]
-        # If the folder has not yet been created
-        if folder_name not in folders:
-            # Create the folder
-            os.mkdir(os.path.join(desktop_path, folder_name))
-            # Add the folder to the dictionary
-            folders[folder_name] = True
-        # Store the original location of the file in the dictionary
-        original_locations[filename] = os.path.join(desktop_path, filename)
-        # Move the file into the appropriate folder
-        shutil.move(os.path.join(desktop_path, filename), os.path.join(desktop_path, folder_name))
-        # Update the label text to show the current file being moved
-        label.config(text=f"Moving {filename} to {folder_name}")
-        # Update the GUI
-        root.update()
+    for destination, original in list(moved_files.items()):
+        if not destination.exists():
+            moved_files.pop(destination)
+            skipped_count += 1
+            continue
 
-# Update the label text to show that the organization is complete
-label.config(text="Desktop organization complete!")
+        if original.exists():
+            skipped_count += 1
+            continue
 
-# Create a button to undo the organization
-undo_button = tk.Button(root, text="Undo", command=undo)
-undo_button.pack()
+        try:
+            shutil.move(str(destination), str(original))
+        except OSError:
+            skipped_count += 1
+            continue
 
-# Run the main loop
+        moved_files.pop(destination)
+        restored_count += 1
+
+    for folder in list(created_folders):
+        try:
+            folder.rmdir()
+            created_folders.remove(folder)
+        except OSError:
+            pass
+
+    undo_button.config(state=tk.NORMAL if moved_files else tk.DISABLED)
+    label.config(
+        text=f"Undo complete: {restored_count} restored, {skipped_count} skipped."
+    )
+
+
+organize_button = tk.Button(root, text="Organize", command=organize)
+organize_button.pack(pady=5)
+
+undo_button = tk.Button(root, text="Undo", command=undo, state=tk.DISABLED)
+undo_button.pack(pady=(0, 10))
+
 root.mainloop()
